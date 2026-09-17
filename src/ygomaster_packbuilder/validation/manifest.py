@@ -103,7 +103,7 @@ def _validate_opening_policy_fields(manifest: ProjectManifest, report: Validatio
         report.issues.append(
             ValidationIssue(
                 code="empty-default-opening-policy",
-                message=f"Default opening policy must be 'configuration-a', found '{default_opening_policy}'.",
+                message=f"Default opening policy cannot be empty.",
                 path="settings.default_opening_policy",
                 severity=ValidationSeverity.ERROR,
             )
