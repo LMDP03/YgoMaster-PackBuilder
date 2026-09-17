@@ -3,3 +3,13 @@ rarities:
   Rare: "R"
   Super Rare: "SR"
   Ultra Rare: "UR"
+
+overrides:
+  personal_main:
+    Secret Rare: "N"
+  
+  personal_mini:
+    Secret Rare: "N"
+
+  shared_staples:
+    Secret Rare: "UR"

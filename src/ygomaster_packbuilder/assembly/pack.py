@@ -1,6 +1,6 @@
 from ygomaster_packbuilder.domain import PackDefinition, PackType, SourcePackRef, SourceProvider, Rarity
 from ygomaster_packbuilder.manifest.models import ManifestPack, ManifestSharedPack
-from ygomaster_packbuilder.mapping import normalize_cards, resolve_cards_master_duel_ids
+from ygomaster_packbuilder.mapping import RarityMapping, normalize_cards, resolve_cards_master_duel_ids
 from ygomaster_packbuilder.rules import get_pack_rule
 from ygomaster_packbuilder.sources.ygoprodeck import YgoProDeckPackData, convert_pack_cards_to_domain
 
@@ -22,7 +22,7 @@ def assemble_pack_definition(
         source_pack: YgoProDeckPackData,
         pack_type: PackType,
         default_opening_policy_key: str,
-        rarity_mapping: dict[str, Rarity],
+        rarity_mapping: RarityMapping,
         ydk_mapping: dict[int, int],
         *,
         owner_key: str | None = None,
@@ -32,7 +32,7 @@ def assemble_pack_definition(
         raise ValueError("Source pack external ID does not match manifest pack source external ID.")
     rule = get_pack_rule(pack_type)
     cards = convert_pack_cards_to_domain(source_pack)
-    normalize_cards(cards, rarity_mapping)
+    normalize_cards(cards, rarity_mapping, pack_type)
     resolve_cards_master_duel_ids(cards, ydk_mapping)
     opening_policy_key = _resolve_opening_policy_key(manifest_pack, default_opening_policy_key)
     source_ref = _convert_source_ref(manifest_pack)

@@ -30,8 +30,8 @@ PACK_RULES: dict[PackType, PackRule] = {
         booster_size=11,
         rarity_composition=RarityComposition(
             normal=100,
-            rare=50,
-            super_rare=30,
+            rare=60,
+            super_rare=20,
             ultra_rare=20,
         ),
     ),
