@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Modular tool for importing, validating, and building custom YGOPRODeck packs for YgoMaster."
 requires-python = ">=3.11"
 dependencies = [
-    "PyYAML>=6.0"
+    "PyYAML>=6.0",
+    "requests>=2.32"
 ]
 
 [build-system]
