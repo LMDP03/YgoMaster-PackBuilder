@@ -1,0 +1,86 @@
+settings:
+  name: "Master Duel Custom League"
+  default_opening_policy: "configuration-a"
+
+players:
+  - key: "livio"
+    display_name: "Marzius"
+
+    main_pack:
+      key: "livio-scaled_invasion"
+      source:
+        provider: "ygoprodeck"
+        external_id: "24116"
+
+    mini_packs:
+      - key: "livio-scaled_invasion-molting_evolution"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24176"
+      
+      - key: "livio-scaled_invasion-venomous_strike"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24172"
+
+      - key: "livio-scaled_invasion-alien_attack"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24175"
+  
+  - key: "matteo"
+    display_name: "Error771"
+
+    main_pack:
+      key: "matteo-might_from_shine_and_stone"
+      source:
+        provider: "ygoprodeck"
+        external_id: "24083"
+
+    mini_packs:
+      - key: "matteo-might_from_shine_and_stone-full_house"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24171"
+      
+      - key: "matteo-might_from_shine_and_stone-promotion"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24174"
+
+      - key: "matteo-might_from_shine_and_stone-furious_warmongers"
+        source:
+          provider: "ygoprodeck"
+          external_id: "24173"
+
+  - key: "lorenzo"
+    display_name: "Lem"
+
+    main_pack:
+      key: "lorenzo-hotel_transilvania"
+      source:
+        provider: "ygoprodeck"
+        external_id: "24119"
+
+    mini_packs:
+      - key: "lorenzo-hotel_transilvania-mini_1"
+        source:
+          provider: "ygoprodeck"
+          external_id: "XXXXX"
+      
+      - key: "lorenzo-hotel_transilvania-mini_2"
+        source:
+          provider: "ygoprodeck"
+          external_id: "XXXXX"
+
+      - key: "lorenzo-hotel_transilvania-mini_3"
+        source:
+          provider: "ygoprodeck"
+          external_id: "XXXXX"
+
+shared_packs:
+  - key: "shared_staples-traps_n_tricks"
+    type: "shared_staples"
+    source:
+      provider: "ygoprodeck"
+      external_id: "24110"
