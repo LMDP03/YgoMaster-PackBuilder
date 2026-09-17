@@ -1,0 +1,26 @@
+policies:
+  - key: "configuration-a"
+
+    normal_slot_distribution:
+      normal: 55.0
+      rare: 35.0
+      super_rare: 7.5
+      ultra_rare: 2.5
+
+    ten_pack_guarantee:
+      enabled: true
+
+      final_slot_distribution:
+        normal: 0.0
+        rare: 0.0
+        super_rare: 80.0
+        ultra_rare: 20.0
+
+    ultra_rare_pity:
+      enabled: true
+
+      guaranteed_slot_distribution:
+        normal: 0.0
+        rare: 0.0
+        super_rare: 0.0
+        ultra_rare: 100.0

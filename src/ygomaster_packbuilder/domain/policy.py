@@ -15,7 +15,6 @@ class TenPackGuarantee:
 @dataclass(slots=True, frozen=True)
 class UltraRarePity:
     enabled: bool
-    trigger_after_ten_pack_without_ur: bool
     guaranteed_slot_distribution: RarityDistribution
 
 @dataclass(slots=True, frozen=True)
