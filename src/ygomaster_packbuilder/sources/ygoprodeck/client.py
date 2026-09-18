@@ -2,7 +2,7 @@ from typing import Any
 
 import requests
 
-CUSTOM_PACK_ENDPOINT = ("https://ygoprodeck.com/api/pack-sim/getPackInfo.php")
+CUSTOM_PACK_ENDPOINT = "https://ygoprodeck.com/api/pack-sim/getPackInfo.php"
 
 class YgoProDeckClient:
     def __init__(self, timeout: float = 15.0, session: requests.Session | None = None) -> None:
