@@ -54,10 +54,7 @@ def resolve_rarity(source_rarity: str, pack_type: PackType, rarity_mapping: Rari
     raise ValueError(f"Unsupported source rarity {source_rarity!r} for pack type {pack_type!r}.")
 
 def normalize_card_rarity(card: Card, rarity_mapping: RarityMapping, pack_type: PackType) -> None:
-    source_rarity = card.source_rarity
-    if source_rarity not in rarity_mapping.rarities:
-        raise ValueError(f"Unsupported source rarity: {source_rarity!r}.")
-    card.rarity = resolve_rarity(source_rarity, pack_type, rarity_mapping)
+    card.rarity = resolve_rarity(card.source_rarity, pack_type, rarity_mapping)
 
 def normalize_cards(cards: list[Card], rarity_mapping: RarityMapping, pack_type: PackType) -> None:
     for card in cards:

@@ -1,4 +1,4 @@
-from ygomaster_packbuilder.domain import PackDefinition, PackType, SourcePackRef, SourceProvider, Rarity
+from ygomaster_packbuilder.domain import PackDefinition, PackType, SourcePackRef, SourceProvider
 from ygomaster_packbuilder.manifest.models import ManifestPack, ManifestSharedPack
 from ygomaster_packbuilder.mapping import RarityMapping, normalize_cards, resolve_cards_master_duel_ids
 from ygomaster_packbuilder.rules import get_pack_rule
