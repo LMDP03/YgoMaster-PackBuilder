@@ -253,6 +253,7 @@ def _validate_player(
 
 def _validate_shared_packs(project: ProjectDefinition, report: ValidationReport) -> None:
     shared_packs = [pack for pack in project.packs if pack.type is PackType.SHARED_STAPLES]
+
     if len(shared_packs) != 1:
         _add_error(
             report,
@@ -260,6 +261,23 @@ def _validate_shared_packs(project: ProjectDefinition, report: ValidationReport)
             message=f"Project contains {len(shared_packs)} shared staples packs; expected exactly 1.",
             path="packs"
         )
+
+    for pack in shared_packs:
+        if pack.owner_key is not None:
+            _add_error(
+                report,
+                code="shared-pack-has-owner",
+                message=f"Shared pack {pack.key!r} must not have an owner.",
+                path=f"packs.{pack.key}.owner_key"
+            )
+
+        if pack.parent_pack_key is not None:
+            _add_error(
+                report,
+                code="shared-pack-has-parent",
+                message=f"Shared pack {pack.key!r} must not have a parent pack.",
+                path=f"packs.{pack.key}.parent_pack_key"
+            )
 
 def validate_project_definition(project: ProjectDefinition) -> ValidationReport:
     report = ValidationReport()
