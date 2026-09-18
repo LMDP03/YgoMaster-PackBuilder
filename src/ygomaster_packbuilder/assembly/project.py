@@ -67,7 +67,7 @@ def _assemble_shared_pack(
     try:
         pack_type = PackType(manifest_pack.type)
     except ValueError as exc:
-        raise ValueError(f"Unsupported shared pack type: {manifest_pack.type!r}.")
+        raise ValueError(f"Unsupported shared pack type: {manifest_pack.type!r}.") from exc
 
     return assemble_pack_definition(
         manifest_pack=manifest_pack,
