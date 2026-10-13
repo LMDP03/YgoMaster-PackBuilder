@@ -108,10 +108,9 @@ def build_project(
         write_ygomaster_build(project, pack_ids, staging_dir)
         _require_valid(validate_ygomaster_build(project, pack_ids, staging_dir), "Staged build")
 
-    save_id_registry(registry, paths.id_registry)
-
     artifacts = write_ygomaster_build(project, pack_ids, paths.build_dir)
     _require_valid(validate_ygomaster_build(project, pack_ids, paths.build_dir), "Final build")
+    save_id_registry(registry, paths.id_registry)
 
     return BuildWorkflowResult(
         project=project,
