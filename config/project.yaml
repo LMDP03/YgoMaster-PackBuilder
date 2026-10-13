@@ -57,26 +57,26 @@ players:
     display_name: "Lem"
 
     main_pack:
-      key: "lorenzo-hotel_transilvania"
+      key: "lorenzo-a_world_of_zombies"
       source:
         provider: "ygoprodeck"
         external_id: "24119"
 
     mini_packs:
-      - key: "lorenzo-hotel_transilvania-mini_1"
+      - key: "lorenzo-a_world_of_zombies-dracula's_bloodline"
         source:
           provider: "ygoprodeck"
-          external_id: "XXXXX"
-      
-      - key: "lorenzo-hotel_transilvania-mini_2"
+          external_id: "24390"
+  
+      - key: "lorenzo-a_world_of_zombies-ghost_meets_world_--_a_complex_mayakashi_shiranui_synchro_summoning_saga"
         source:
           provider: "ygoprodeck"
-          external_id: "XXXXX"
+          external_id: "24393"
 
-      - key: "lorenzo-hotel_transilvania-mini_3"
+      - key: "lorenzo-a_world_of_zombies-inside_the_pyramid"
         source:
           provider: "ygoprodeck"
-          external_id: "XXXXX"
+          external_id: "24395"
 
 shared_packs:
   - key: "shared_staples-traps_n_tricks"
