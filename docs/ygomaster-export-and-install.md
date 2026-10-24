@@ -11,7 +11,7 @@ build/
 └── ShopSettings.patch.json
 ```
 
-YgoMaster loads the main `Data/Shop.json` and modular `Data/Shop/*.json`; it also loads modular `Data/ShopPackOdds/*.json`. The main shop loader handles global options such as `PerPackRarities`, but does **not** apply this setting from modular shop files. Consequently, `ShopSettings.patch.json` is an *instruction for the installer* and must **not** be copied as an independent runtime shop JSON file.
+YgoMaster loads the main `Data/Shop.json` and modular `Data/Shop/*.json`; the upstream loader for modular `Data/ShopPackOdds/*.json` currently uses an incorrect directory enumeration; therefore PackBuilder merges its odds into the main `Data/ShopPackOdds.json` at install time. The main shop loader handles global options such as `PerPackRarities`, but does **not** apply this setting from modular shop files. Consequently, `ShopSettings.patch.json` is an *instruction for the installer* and must **not** be copied as an independent runtime shop JSON file.
 
 The exporter does not currently generate `ShopPackOddsVisuals.json`, image assets, textures or new card data. It uses existing card IDs for icons/previews.
 
@@ -115,33 +115,43 @@ Pity state and x10 counters are owned by the YgoMaster runtime and scoped to the
 
 The workflow first writes/validates a staging directory, then writes/validates the final build; only after the final build passes does it save `state/ygomaster_ids.json`. The build validator checks file presence, JSON roots, Shop/odds references, `.tmp` leftovers and full structural equality with freshly computed exports.
 
-## 6. Installer target layout
+## 6. Installer target layout (version 2)
 
-The installer takes the **YgoMaster root**, derives paths and installs:
+The **build format remains unchanged**, but installation now merges generated odds into the **main** `Data/ShopPackOdds.json`, avoiding a modular odds directory that can trigger the current upstream YgoMaster loader bug.
 
 ```text
 <YgoMaster>/
 ├── Data/
-│   ├── Shop.json                           # PerPackRarities patched to true
-│   ├── Shop/ygomaster-packbuilder.json      # from build/Shop/
-│   └── ShopPackOdds/ygomaster-packbuilder.json
+│   ├── Shop.json                           # PerPackRarities enabled
+│   ├── Shop/ygomaster-packbuilder.json      # Managed modular shop file
+│   └── ShopPackOdds.json                   # Existing odds + marked custom entries
 └── .ygomaster-packbuilder/
     ├── install-state.json
-    └── backup/                              # only when managed target files existed
+    └── backup/                              # Pre-existing managed shop file, if any
 ```
 
-`ShopSettings.patch.json` is read and verified to be `{"PerPackRarities": true}`; the installer applies this setting to the **existing main** `Data/Shop.json`. The file is patched **textually** rather than parsed/reformatted with Python `json`: upstream YgoMaster's `DeserializeStripped` supports `//` comments. The implementation preserves BOM and newline style and tries to keep existing formatting. The patcher is intentionally narrow; do not assume it can safely edit arbitrary malformed or exotic JSON/comment arrangements.
+The installer requires the existing main Shop and ShopPackOdds files. It refuses installation if `Data/ShopPackOdds/` already exists; back up or relocate that directory manually after checking its contents.
 
-Installation preflight reads/validates the build and checks target paths/patchability before replacing managed files. `_write_bytes_atomic_if_changed()` compares bytes and rewrites only when different. On an identical reinstall, `changed_files` is empty. YgoMaster should be stopped during install/uninstall and restarted for file changes to take effect.
+`ShopSettings.patch.json` is an installer instruction and enables `PerPackRarities` in the existing main `Data/Shop.json`. The main Shop patcher preserves original comments and text where possible. The odds patcher parses a comment-masked copy to validate the JSON array, but **does not reserialize existing entries**: it inserts a delimited block after the opening bracket, using the original BOM and line-ending style. Its SHA-256 is recorded in the installation state.
 
-## 7. Local installation state and backup
+The beginning/end markers are:
+```text
+// YGOMASTER-PACKBUILDER ODDS BEGIN
+... generated per-pack odds ...
+// YGOMASTER-PACKBUILDER ODDS END
+```
 
-`installer/state.py` stores local state under `<YgoMaster>/.ygomaster-packbuilder/install-state.json`:
+Existing odds entries remain in place and may have unrelated user edits between updates. A collision between existing `packShopIds` and generated IDs is rejected before installation. Reinstalling with unchanged data is idempotent.
+
+## 7. Local installation state, updates and removal
+
+The local installation state is now **version 2** and contains `odds_block_sha256` in addition to the original global Shop setting and the managed modular Shop file:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "per_pack_rarities_before": false,
+  "odds_block_sha256": "<64-character SHA-256 digest>",
   "managed_files": {
     "Data/Shop/ygomaster-packbuilder.json": {
       "relative_path": "Data/Shop/ygomaster-packbuilder.json",
@@ -152,15 +162,15 @@ Installation preflight reads/validates the build and checks target paths/patchab
 }
 ```
 
-This sample shows one managed-file entry for brevity; a real installed state contains **both** Shop and ShopPackOdds files. `per_pack_rarities_before` is one of `null` (key absent), `false`, or `true`. When a managed filename already exists before the first install, its original bytes are backed up under the local state directory. **Later updates never overwrite the original backup or original setting.** The installed content hashes are updated to the latest managed version.
+The `odds_block_sha256` protects **only the generated block**, so unrelated changes elsewhere in the main odds file are preserved during update/uninstall. If the marked block is missing, duplicated or manually changed, the operation fails rather than rewriting potentially user-owned data. The uninstall removes only the generated block, restores the original `PerPackRarities` setting and restores or deletes the managed Shop file according to the original backup state.
 
-On update/uninstall, a hash mismatch in an existing managed file triggers `YgoMasterInstallError` instead of overwriting manual edits. During uninstall, preexisting files are restored from backup; files created by PackBuilder are removed. The main `Shop.json` setting is restored surgically according to the first-install value; unrelated text is not intentionally rewritten. The local state directory is removed only after a successful uninstall.
+**Migration:** state version 1 installations are not automatically migrated. If the old installer was previously used, uninstall with the old version first and remove any old modular odds directory after backing it up, **before upgrading to this release**. Version 2 rejects incompatible old state. No changes are made to user data on disk until an installation is explicitly requested.
 
-A missing state, missing required backup, invalid state structure or ambiguous manual change to the patched option can block uninstall. Backup/restore is not a full filesystem transaction and should not be confused with a snapshot of the entire YgoMaster installation.
+The installer uses atomic writes for each file, but a multi-file update is not an all-or-nothing transaction under unexpected filesystem errors. Stop YgoMaster before installing or uninstalling and restart it afterward.
 
 ## 8. Deployment caveats
 
-- **No collision scan** is currently performed against every other installed mod's shop IDs. The custom range is chosen to avoid stock IDs, but users should still inspect a heavily modded target.
+- The installer checks collisions against existing `packShopIds` in the main odds file, but **does not scan all existing modular shop files** for colliding shop IDs. The custom range is chosen to avoid stock IDs, but users should still inspect a heavily modded target.
 - Per-file atomic replaces do not make a multi-file install/uninstall rollback-proof under I/O failure.
 - Installing data does not automatically distribute it across other machines or live network peers.
 - Shop display and gacha behavior in a specific YgoMaster version must be tested; no `ShopPackOddsVisuals` file or new art is produced.
