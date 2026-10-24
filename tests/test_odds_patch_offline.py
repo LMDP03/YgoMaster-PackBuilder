@@ -21,7 +21,7 @@ BASES = [
     b'[{"packShopIds":[1]}]',
     # The upstream YgoMaster Data/ShopPackOdds.json includes trailing commas
     # inside nested cardRateList arrays (allowed by MiniJSON, not strict JSON).
-    b'[\\n  // Legacy pack rates (estimate)\\n  {"packShopIds":[1], "cardRateList":[{"start_num":1, "rate":{"1":{"rate":"100.00"},},},],},\\n]',
+    b'[\n  // Legacy pack rates (estimate)\n  {"packShopIds":[1], "cardRateList":[{"start_num":1, "rate":{"1":{"rate":"100.00"},},},],},\n]',
     b'[{"packShopIds":[1], "name":"literal ,] and ,} inside string", "cardRateList":[{"start_num":1,},],},]',
 
     b'[\n// Preserve comments\n{"packShopIds":[1]} // trailing comment\n]',
