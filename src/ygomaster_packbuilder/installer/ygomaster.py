@@ -7,6 +7,7 @@ import shutil
 from ygomaster_packbuilder.domain import ProjectDefinition
 from ygomaster_packbuilder.validation import validate_ygomaster_build
 
+from .odds_patch import YgoMasterOddsPatchError, patch_main_odds_file, restore_main_odds_file
 from .state import (
     INSTALL_STATE_VERSION,
     ManagedFileState,
@@ -21,8 +22,8 @@ from .state import (
 BUILD_FILENAME = "ygomaster-packbuilder.json"
 SHOP_SETTINGS_PATCH_FILENAME = "ShopSettings.patch.json"
 SHOP_RELATIVE_PATH = f"Data/Shop/{BUILD_FILENAME}"
-ODDS_RELATIVE_PATH = f"Data/ShopPackOdds/{BUILD_FILENAME}"
-MANAGED_RELATIVE_PATHS = (SHOP_RELATIVE_PATH, ODDS_RELATIVE_PATH)
+ODDS_RELATIVE_PATH = "Data/ShopPackOdds.json"
+MANAGED_RELATIVE_PATHS = (SHOP_RELATIVE_PATH,)
 
 _PER_PACK_RARITIES_PATTERN = re.compile(
     r'("PerPackRarities"\s*:\s*)(true|false)',
@@ -124,7 +125,7 @@ def _restore_main_shop_file(original: bytes, previous: bool | None) -> bytes:
     text, encoding = _decode_main_shop(original)
     return _restore_per_pack_rarities(text, previous).encode(encoding)
 
-def _resolve_target(ygomaster_dir: str | Path) -> tuple[Path, Path, Path]:
+def _resolve_target(ygomaster_dir: str | Path) -> tuple[Path, Path, Path, Path]:
     ygomaster_dir = Path(ygomaster_dir)
     if not ygomaster_dir.is_dir():
         raise YgoMasterInstallError(f"YgoMaster directory does not exist: {ygomaster_dir}")
@@ -134,7 +135,10 @@ def _resolve_target(ygomaster_dir: str | Path) -> tuple[Path, Path, Path]:
     main_shop_file = data_dir / "Shop.json"
     if not main_shop_file.is_file():
         raise YgoMasterInstallError(f"YgoMaster Shop.json was not found: {main_shop_file}")
-    return ygomaster_dir, data_dir, main_shop_file
+    main_odds_file = data_dir / "ShopPackOdds.json"
+    if not main_odds_file.is_file():
+        raise YgoMasterInstallError(f"YgoMaster ShopPackOdds.json was not found: {main_odds_file}")
+    return ygomaster_dir, data_dir, main_shop_file, main_odds_file
 
 def _require_valid_build(project: ProjectDefinition, pack_ids: dict[str, int], build_dir: Path) -> None:
     report = validate_ygomaster_build(project, pack_ids, build_dir)
@@ -172,19 +176,26 @@ def _backup_preexisting_file(ygomaster_dir: Path, relative_path: str) -> bool:
     _write_bytes_atomic_if_changed(backup, target.read_bytes())
     return True
 
+def _ensure_no_modular_odds_dir(data_dir: Path) -> None:
+    odds_dir = data_dir / "ShopPackOdds"
+    if odds_dir.is_dir():
+        raise YgoMasterInstallError(
+            f"Found {odds_dir}. The upstream YgoMaster loader may fail when this directory exists. "
+            "Remove or relocate it after safely backing up its contents."
+        )
+
 def install_ygomaster_build(project: ProjectDefinition, pack_ids: dict[str, int], build_dir: str | Path, ygomaster_dir: str | Path) -> YgoMasterInstallResult:
     build_dir = Path(build_dir)
     _require_valid_build(project, pack_ids, build_dir)
-    ygomaster_dir, data_dir, main_shop_file = _resolve_target(ygomaster_dir)
+    ygomaster_dir, data_dir, main_shop_file, main_odds_file = _resolve_target(ygomaster_dir)
+    _ensure_no_modular_odds_dir(data_dir)
 
     source_shop = build_dir / "Shop" / BUILD_FILENAME
     source_odds = build_dir / "ShopPackOdds" / BUILD_FILENAME
     source_patch = build_dir / SHOP_SETTINGS_PATCH_FILENAME
     target_shop = ygomaster_dir / SHOP_RELATIVE_PATH
-    target_odds = ygomaster_dir / ODDS_RELATIVE_PATH
-
     shop_content = source_shop.read_bytes()
-    odds_content = source_odds.read_bytes()
+    odds_entries = json.loads(source_odds.read_text(encoding="utf-8"))
     patch_data = json.loads(source_patch.read_text(encoding="utf-8"))
     if patch_data != {"PerPackRarities": True}:
         raise YgoMasterInstallError("Unsupported Shop settings patch.")
@@ -192,7 +203,6 @@ def install_ygomaster_build(project: ProjectDefinition, pack_ids: dict[str, int]
     original_main_shop = main_shop_file.read_bytes()
     patched_main_shop = _patch_main_shop_file(original_main_shop)
     main_shop_text, _ = _decode_main_shop(original_main_shop)
-
     previous_state = _load_install_state(ygomaster_dir)
     if previous_state is not None:
         for managed in previous_state.managed_files.values():
@@ -201,67 +211,61 @@ def install_ygomaster_build(project: ProjectDefinition, pack_ids: dict[str, int]
         preexisting = {key: value.preexisting for key, value in previous_state.managed_files.items()}
     else:
         per_pack_rarities_before = _get_per_pack_rarities(main_shop_text)
-        preexisting = {
-            relative_path: _backup_preexisting_file(ygomaster_dir, relative_path)
-            for relative_path in MANAGED_RELATIVE_PATHS
-        }
+        preexisting = {relative_path: _backup_preexisting_file(ygomaster_dir, relative_path)
+                       for relative_path in MANAGED_RELATIVE_PATHS}
+    try:
+        patched_main_odds, odds_block_sha256 = patch_main_odds_file(
+            main_odds_file.read_bytes(), odds_entries,
+            previous_state.odds_block_sha256 if previous_state is not None else None,
+        )
+    except YgoMasterOddsPatchError as exc:
+        raise YgoMasterInstallError(str(exc)) from exc
 
-    contents = {
-        SHOP_RELATIVE_PATH: shop_content,
-        ODDS_RELATIVE_PATH: odds_content,
-    }
     new_state = YgoMasterInstallationState(
         version=INSTALL_STATE_VERSION,
         per_pack_rarities_before=per_pack_rarities_before,
         managed_files={
-            relative_path: ManagedFileState(
-                relative_path=relative_path,
-                preexisting=preexisting[relative_path],
-                installed_sha256=sha256_bytes(content),
-            )
-            for relative_path, content in contents.items()
+            SHOP_RELATIVE_PATH: ManagedFileState(
+                relative_path=SHOP_RELATIVE_PATH,
+                preexisting=preexisting[SHOP_RELATIVE_PATH],
+                installed_sha256=sha256_bytes(shop_content),
+            ),
         },
+        odds_block_sha256=odds_block_sha256,
     )
-
     changed_files: list[Path] = []
-    if _write_bytes_atomic_if_changed(target_shop, shop_content):
-        changed_files.append(target_shop)
-    if _write_bytes_atomic_if_changed(target_odds, odds_content):
-        changed_files.append(target_odds)
-    if _write_bytes_atomic_if_changed(main_shop_file, patched_main_shop):
-        changed_files.append(main_shop_file)
+    for path, content in ((target_shop, shop_content), (main_odds_file, patched_main_odds), (main_shop_file, patched_main_shop)):
+        if _write_bytes_atomic_if_changed(path, content):
+            changed_files.append(path)
     if previous_state != new_state:
         save_install_state(new_state, ygomaster_dir)
-
     return YgoMasterInstallResult(
         ygomaster_dir=ygomaster_dir,
         data_dir=data_dir,
         shop_file=target_shop,
-        shop_pack_odds_file=target_odds,
+        shop_pack_odds_file=main_odds_file,
         main_shop_file=main_shop_file,
         changed_files=tuple(changed_files),
     )
 
 def uninstall_ygomaster_build(ygomaster_dir: str | Path) -> YgoMasterUninstallResult:
-    ygomaster_dir, _, main_shop_file = _resolve_target(ygomaster_dir)
+    ygomaster_dir, _, main_shop_file, main_odds_file = _resolve_target(ygomaster_dir)
     state = _load_install_state(ygomaster_dir)
     if state is None:
         raise YgoMasterInstallError("No PackBuilder installation state was found.")
-
     for managed in state.managed_files.values():
         _verify_managed_file(ygomaster_dir, managed)
         if managed.preexisting and not get_backup_path(ygomaster_dir, managed.relative_path).is_file():
             raise YgoMasterInstallError(f"Missing installation backup: {get_backup_path(ygomaster_dir, managed.relative_path)}")
-
-    restored_main_shop = _restore_main_shop_file(
-        main_shop_file.read_bytes(),
-        state.per_pack_rarities_before,
-    )
+    restored_main_shop = _restore_main_shop_file(main_shop_file.read_bytes(), state.per_pack_rarities_before)
+    try:
+        restored_main_odds = restore_main_odds_file(main_odds_file.read_bytes(), state.odds_block_sha256)
+    except YgoMasterOddsPatchError as exc:
+        raise YgoMasterInstallError(str(exc)) from exc
 
     changed_files: list[Path] = []
     removed_files: list[Path] = []
     restored_files: list[Path] = []
-
     for managed in state.managed_files.values():
         target = ygomaster_dir / managed.relative_path
         if managed.preexisting:
@@ -273,11 +277,10 @@ def uninstall_ygomaster_build(ygomaster_dir: str | Path) -> YgoMasterUninstallRe
             target.unlink()
             changed_files.append(target)
             removed_files.append(target)
-
-    if _write_bytes_atomic_if_changed(main_shop_file, restored_main_shop):
-        changed_files.append(main_shop_file)
-        restored_files.append(main_shop_file)
-
+    for path, content in ((main_odds_file, restored_main_odds), (main_shop_file, restored_main_shop)):
+        if _write_bytes_atomic_if_changed(path, content):
+            changed_files.append(path)
+            restored_files.append(path)
     shutil.rmtree(get_install_state_dir(ygomaster_dir))
     return YgoMasterUninstallResult(
         ygomaster_dir=ygomaster_dir,
