@@ -1,0 +1,16 @@
+[project]
+name = "ygomaster-packbuilder"
+version = "0.1.0"
+description = "Modular tool for importing, validating, and building custom YGOPRODeck packs for YgoMaster."
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6.0",
+    "requests>=2.32"
+]
+
+[project.scripts]
+ygomaster-packbuilder = "ygomaster_packbuilder.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

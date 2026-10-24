@@ -233,7 +233,11 @@ def _validate_player(
                 _add_error(
                     report,
                     code="mini-card-rarity-mismatch",
-                    message=f"Card YDK {card.ydk_id} has rarity {card.rarity!r} in {mini.key!r}, but {main_card.rarity!r} in {main.key!r}.",
+                    message=(
+                        f"Card {card.name!r} (YDK {card.ydk_id}) "
+                        f"has rarity {card.rarity!r} in {mini.key!r}, "
+                        f"but {main_card.rarity!r} in {main.key!r}."
+                    ),
                     path=f"packs.{mini.key}.cards"
                 )
 
