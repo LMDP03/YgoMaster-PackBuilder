@@ -1,136 +1,188 @@
 # YgoMaster-PackBuilder
 
-**YgoMaster-PackBuilder** imports custom Yu-Gi-Oh! packs from [YGOPRODeck](https://ygoprodeck.com/), validates their contents against a configurable league structure, and generates shop data for [pixeltris/YgoMaster](https://github.com/pixeltris/YgoMaster). It can install the generated packs into an existing YgoMaster installation and safely uninstall its managed files.
+**YgoMaster-PackBuilder** is a Python companion tool for [YgoMaster](https://github.com/pixeltris/YgoMaster). It imports custom packs from [YGOPRODeck](https://ygoprodeck.com/), checks their card lists and rarities against the configured league rules, and generates the shop files needed to use those packs in YgoMaster.
 
-The builder is a **companion tool**, not a replacement for YgoMaster or the Master Duel client. It runs in Python on Windows or Linux; it does not configure game servers, VPNs, accounts or PvP connectivity.
+It also provides commands to install, update, and uninstall the generated content without replacing YgoMaster itself. PackBuilder does **not** install YgoMaster, launch its server, or configure PvP networking.
 
-## What it does
+## Features
 
-- Imports YGOPRODeck custom packs and their card rarities.
-- Maps YDK/passcode IDs to Master Duel internal IDs using the existing YgoMaster `Data/YdkIds.txt`.
-- Applies pack-type-specific rarity mappings and checks league rules (pack sizes, rarity counts, mini-pack subsets and disjointness).
-- Generates YgoMaster-compatible `Shop` and `ShopPackOdds` JSON with configurable opening odds.
-- Keeps numeric pack IDs stable across builds through a versioned registry.
-- Installs, updates or removes its own pack files, retaining local installation state and restoring the prior `PerPackRarities` setting when uninstalling.
+- Import custom packs defined on YGOPRODeck.
+- Resolve card identifiers using the `YdkIds.txt` supplied with an existing YgoMaster installation.
+- Validate pack sizes, rarity distributions, and relationships between main and mini-packs.
+- Generate YgoMaster shop entries and opening probabilities.
+- Preserve stable pack IDs between builds.
+- Install and uninstall the generated files, keeping local backup and restoration information.
 
-The checked-in configuration currently describes **3 players, 13 packs** (3 main packs, 9 mini-packs, 1 shared staples pack). Configuration files can be edited for another league; the current validation rules remain specific to this pack structure.
+The supplied configuration currently defines a league with **3 players and 13 packs**. Other configurations can be created within the rules supported by the project.
 
 ## Requirements
 
-- **Python 3.11 or newer**, Git and an internet connection for fetching packs from YGOPRODeck.
-- An existing, compatible **YgoMaster installation** with `Data/Shop.json` and `Data/YdkIds.txt`.
-- Python dependencies installed automatically from `pyproject.toml`: `PyYAML>=6.0` and `requests>=2.32`.
+Before starting, you need:
 
-> **Important:** Install this repository and run the CLI using your native Python environment. On Linux, the builder itself does **not** require Wine; how the YgoMaster game/server is run is a separate concern.
+- **Python 3.11 or newer** (Python 3.12 is a suitable choice).
+- **Git** to clone the repository.
+- An **existing YgoMaster installation** containing `Data/Shop.json` and `Data/YdkIds.txt`.
+- An internet connection when importing packs from YGOPRODeck.
+
+PackBuilder's Python dependencies are declared in the repository's root `pyproject.toml` and installed automatically with `pip`: `PyYAML` and `requests`.
+
+> **Virtual environments are local.** The repository does **not** contain a Python virtual environment or installed dependencies. After cloning it, **each user creates their own** `.venv` on their own machine. `.venv/` is excluded by `.gitignore` and must **not** be committed or uploaded. The examples below create `.venv` inside the local working directory only for convenience; it can also live elsewhere.
+
+> On Linux, **PackBuilder runs natively with Python**. Wine may be needed for the YgoMaster game/client itself, but not for this tool.
 
 ## Installation
 
-In each case, clone the repository, create an isolated Python virtual environment, and install the package in editable mode. Commands assume you are inside the cloned repository. **If the GitHub repository is private, authenticate with an account that has access before cloning** (for example with a Git credential manager or SSH).
+The same Git repository is used on every operating system. Choose the instructions for your machine; the virtual environment and dependencies are installed separately on each device.
+
+If the repository is private, make sure your Git credentials or SSH key have access before cloning.
 
 ### Windows (PowerShell)
 
-Install [Python](https://www.python.org/downloads/windows/) (3.11+) and [Git](https://git-scm.com/downloads/win). You may use Windows Package Manager:
+Install [Python](https://www.python.org/downloads/windows/) and [Git](https://git-scm.com/downloads/win), then open a new PowerShell window. For example, on systems with `winget`:
 
 ```powershell
 winget install --id Git.Git -e
 winget install --id Python.Python.3.12 -e
 ```
 
-Open a new PowerShell terminal after installing those tools:
+Clone the repository and create a **local**, untracked virtual environment:
 
 ```powershell
 git clone https://github.com/LMDP03/YgoMaster-PackBuilder.git
 cd YgoMaster-PackBuilder
 py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-Run the CLI through its executable in the environment (no PowerShell execution-policy change needed):
+Check the installation:
 
 ```powershell
 .\.venv\Scripts\ygomaster-packbuilder.exe --help
 ```
 
-Alternatively, activate the environment with `.\.venv\Scripts\Activate.ps1` if your PowerShell policy permits it, then use `ygomaster-packbuilder` directly.
+The commands above call the virtual environment directly, so PowerShell script activation is not required. If the CLI executable is not available yet, use `.\.venv\Scripts\python.exe -m ygomaster_packbuilder.cli --help`.
 
 ### Ubuntu / Debian
 
 ```bash
 sudo apt update
 sudo apt install -y git python3 python3-venv python3-pip
+
 git clone https://github.com/LMDP03/YgoMaster-PackBuilder.git
 cd YgoMaster-PackBuilder
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-ygomaster-packbuilder --help
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e .
+.venv/bin/ygomaster-packbuilder --help
 ```
 
-If your default `python3` is older than 3.11, install/select a supported Python version before creating the environment.
+Check that the installed `python3` is version 3.11 or newer. If not, install a supported interpreter and use it to create `.venv`.
 
 ### Fedora
 
 ```bash
 sudo dnf install -y git python3 python3-pip
+
 git clone https://github.com/LMDP03/YgoMaster-PackBuilder.git
 cd YgoMaster-PackBuilder
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-ygomaster-packbuilder --help
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e .
+.venv/bin/ygomaster-packbuilder --help
 ```
 
 ### Arch Linux
 
 ```bash
 sudo pacman -Syu --needed git python python-pip
+
 git clone https://github.com/LMDP03/YgoMaster-PackBuilder.git
 cd YgoMaster-PackBuilder
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-ygomaster-packbuilder --help
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e .
+.venv/bin/ygomaster-packbuilder --help
 ```
 
-On Linux, reactivate the environment in a new terminal with `source .venv/bin/activate`, or call `.venv/bin/ygomaster-packbuilder` directly. The Python installation is independent of the location of YgoMaster, including installations used through Wine.
+## Usage
 
-## Using the CLI
+The `ygomaster-packbuilder` executable requires the `[project.scripts]` entry in the **root** `pyproject.toml`. If you are using a revision without that entry, invoke the CLI with your environment’s Python and `-m ygomaster_packbuilder.cli` instead.
 
-Run commands **from the PackBuilder repository root**. `--ygomaster-dir` must point to the YgoMaster directory **containing `Data/`**, not directly to `Data/`, `Shop/`, or a game executable.
+Run these commands from the **PackBuilder repository root**. The `--ygomaster-dir` argument is the path to the **YgoMaster root folder** (the one containing `Data/`), not to `Data/`, `Shop/`, or an executable. You do not need to specify `YdkIds.txt` separately; the tool locates it under `Data/`.
 
-**Build only — recommended first:**
+### Activate the virtual environment
+
+The `.venv` directory is created **locally during installation** and does not need to be recreated for each use. Open a terminal in the PackBuilder repository root and activate it whenever you start a new terminal session.
+
+**Windows (PowerShell):**
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux (Ubuntu/Debian, Fedora, Arch):**
+
+```bash
+source .venv/bin/activate
+```
+
+With the environment active, the `ygomaster-packbuilder` command is available directly:
+
+### Build without installing
 
 ```bash
 ygomaster-packbuilder build --ygomaster-dir "/path/to/YgoMaster"
 ```
 
-**Build, validate and install:**
+This imports the configured packs, runs validation, and generates the files under `build/`. **Run this command first**, before modifying your YgoMaster installation.
+
+### Build and install
 
 ```bash
 ygomaster-packbuilder install --ygomaster-dir "/path/to/YgoMaster"
 ```
 
-**Uninstall and restore previous settings:**
+This runs the same build and validation steps, then installs the generated files into YgoMaster. Stop the relevant YgoMaster process before installing and restart it afterward.
+
+### Uninstall
 
 ```bash
 ygomaster-packbuilder uninstall --ygomaster-dir "/path/to/YgoMaster"
 ```
 
-On Windows PowerShell, use the environment executable and a Windows path, for example:
+This removes PackBuilder-managed files and restores the previous shop setting using the installation state saved on that machine. If managed files have been modified independently, the uninstaller may refuse to overwrite them.
+
+For a Windows path, for example:
 
 ```powershell
-.\.venv\Scripts\ygomaster-packbuilder.exe build --ygomaster-dir "C:\Games\YgoMaster"
+ygomaster-packbuilder build --ygomaster-dir "C:\Games\YgoMaster"
 ```
 
-For `build` and `install`, you can explicitly select a different PackBuilder directory using `--project-root "/path/to/YgoMaster-PackBuilder"`. If the shell cannot find the installed command, `python -m ygomaster_packbuilder.cli ...` is an equivalent entry point when the virtual environment is active.
+The `build` and `install` commands also accept `--project-root` if you run them from outside the cloned PackBuilder directory. To see all arguments, use `ygomaster-packbuilder --help` or `<command> --help`.
 
-**Do a successful `build` and inspect its results before the first `install`.** Stop YgoMaster while changing its files and restart the relevant process afterwards; generating or installing JSON does not hot-reload the running game/server.
+### Deactivate the virtual environment
 
-## Files and configuration
+When you have finished using PackBuilder, run the following command on **Windows and Linux**:
 
-Edit `config/project.yaml`, `config/policies.yaml` and `config/rarity_mapping.yaml` to configure the packs and probabilities. YGOPRODeck updates may not immediately be reflected in its API, and the build can fail validation until its responses are updated.
+```bash
+deactivate
+```
 
-Successful builds produce:
+The virtual environment stays on your machine; `deactivate` only exits it for the current terminal session. You will need to activate it again in a new session.
+
+## Project files
+
+The main user-editable configuration lives in:
+
+```text
+config/
+├── project.yaml          # Players, packs, and YGOPRODeck references
+├── policies.yaml         # Pack-opening probabilities and guarantees
+└── rarity_mapping.yaml   # Source rarity conversion
+```
+
+Successful builds create:
 
 ```text
 build/
@@ -141,14 +193,25 @@ build/
 state/ygomaster_ids.json
 ```
 
-The **ID registry** is intentionally version-controlled: after the first successful build, commit changes to `state/ygomaster_ids.json` so all installations use the same numeric pack IDs. Generated `build/` files are ignored by Git. Local installation backups/state live under `<YgoMaster>/.ygomaster-packbuilder/` and should not be committed.
+**What goes into Git:**
 
-The current exporter does not create new card assets or `ShopPackOddsVisuals.json`. Runtime behavior, in particular opening guarantees, should be checked in the target YgoMaster version before relying on it for a live league.
+| Item | Commit to the repository? |
+| --- | --- |
+| Python source code, `pyproject.toml`, configs, docs | **Yes** |
+| `state/ygomaster_ids.json` | **Yes** — keep pack IDs consistent across devices |
+| `.venv/` and installed Python packages | **No** — generated locally on each machine |
+| `build/` generated files | **No** — regenerated as needed |
+| `<YgoMaster>/.ygomaster-packbuilder/` | **No** — per-installation state and backups |
 
-## Documentation
+The project `.gitignore` already excludes `.venv/` and generated build files. The stable ID registry is intentionally tracked; commit it after a successful build that assigns new pack IDs.
 
-Developer-level design, validation codes, data formats and implementation details are in [docs/](docs/README.md). This README deliberately covers setup and day-to-day use only.
+## Notes and limitations
 
-## Current limitations
+- Pack imports depend on YGOPRODeck's custom-pack endpoint, which can be slow to reflect recent changes. **PackBuilder does not cache API responses.**
+- Cards without a valid mapping in YgoMaster's `YdkIds.txt`, or packs that violate the configured rules, stop the build with an error.
+- PackBuilder generates shop data; it does not add new card artwork/assets or configure multiplayer connectivity.
+- Test the generated content and opening behavior with the target YgoMaster version before using it in a live league.
 
-The YGOPRODeck custom-pack endpoint used by the source adapter is not a documented public API; its response shape, availability and update latency can change. An unmapped YDK ID blocks a build rather than being assigned a guessed Master Duel ID. Installation writes into YgoMaster's data directory; it is not a substitute for testing against an actual server/client setup.
+## Technical documentation
+
+See [docs/](docs/README.md) for the project architecture, data models, rules, validation, sources, export format, registry, workflow, and installer implementation.

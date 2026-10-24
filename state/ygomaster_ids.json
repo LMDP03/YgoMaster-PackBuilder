@@ -1,5 +1,19 @@
 {
   "version": 1,
-  "next_pack_id": 9000000,
-  "pack_ids": {}
+  "next_pack_id": 9000013,
+  "pack_ids": {
+    "livio-scaled_invasion": 9000000,
+    "livio-scaled_invasion-alien_attack": 9000001,
+    "livio-scaled_invasion-molting_evolution": 9000002,
+    "livio-scaled_invasion-venomous_strike": 9000003,
+    "lorenzo-a_world_of_zombies": 9000004,
+    "lorenzo-a_world_of_zombies-dracula's_bloodline": 9000005,
+    "lorenzo-a_world_of_zombies-ghost_meets_world_--_a_complex_mayakashi_shiranui_synchro_summoning_saga": 9000006,
+    "lorenzo-a_world_of_zombies-inside_the_pyramid": 9000007,
+    "matteo-might_from_shine_and_stone": 9000008,
+    "matteo-might_from_shine_and_stone-full_house": 9000009,
+    "matteo-might_from_shine_and_stone-furious_warmongers": 9000010,
+    "matteo-might_from_shine_and_stone-promotion": 9000011,
+    "shared_staples-traps_n_tricks": 9000012
+  }
 }

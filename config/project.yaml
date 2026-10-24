@@ -41,17 +41,17 @@ players:
       - key: "matteo-might_from_shine_and_stone-full_house"
         source:
           provider: "ygoprodeck"
-          external_id: "24171"
+          external_id: "24514"
       
       - key: "matteo-might_from_shine_and_stone-promotion"
         source:
           provider: "ygoprodeck"
-          external_id: "24174"
+          external_id: "24511"
 
       - key: "matteo-might_from_shine_and_stone-furious_warmongers"
         source:
           provider: "ygoprodeck"
-          external_id: "24173"
+          external_id: "24515"
 
   - key: "lorenzo"
     display_name: "Lem"
@@ -83,4 +83,4 @@ shared_packs:
     type: "shared_staples"
     source:
       provider: "ygoprodeck"
-      external_id: "24110"
+      external_id: "24513"
