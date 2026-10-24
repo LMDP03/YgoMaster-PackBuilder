@@ -132,7 +132,7 @@ The **build format remains unchanged**, but installation now merges generated od
 
 The installer requires the existing main Shop and ShopPackOdds files. It refuses installation if `Data/ShopPackOdds/` already exists; back up or relocate that directory manually after checking its contents.
 
-`ShopSettings.patch.json` is an installer instruction and enables `PerPackRarities` in the existing main `Data/Shop.json`. The main Shop patcher preserves original comments and text where possible. The odds patcher parses a comment-masked copy to validate the JSON array, but **does not reserialize existing entries**: it inserts a delimited block after the opening bracket, using the original BOM and line-ending style. Its SHA-256 is recorded in the installation state.
+`ShopSettings.patch.json` is an installer instruction and enables `PerPackRarities` in the existing main `Data/Shop.json`. The main Shop patcher preserves original comments and text where possible. The odds patcher parses a comment-masked copy that also tolerates trailing commas (as in upstream YgoMaster's MiniJSON parser) to validate the JSON array, but **does not reserialize existing entries**: it inserts a delimited block after the opening bracket, using the original BOM and line-ending style. Its SHA-256 is recorded in the installation state.
 
 The beginning/end markers are:
 ```text
