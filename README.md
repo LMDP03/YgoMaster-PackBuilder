@@ -21,7 +21,7 @@ Before starting, you need:
 
 - **Python 3.11 or newer** (Python 3.12 is a suitable choice).
 - **Git** to clone the repository.
-- An **existing YgoMaster installation** containing `Data/Shop.json` and `Data/YdkIds.txt`.
+- An **existing YgoMaster installation** containing `Data/Shop.json`, `Data/ShopPackOdds.json`, and `Data/YdkIds.txt`.
 - An internet connection when importing packs from YGOPRODeck.
 
 PackBuilder's Python dependencies are declared in the repository's root `pyproject.toml` and installed automatically with `pip`: `PyYAML` and `requests`.
@@ -143,7 +143,7 @@ This imports the configured packs, runs validation, and generates the files unde
 ygomaster-packbuilder install --ygomaster-dir "/path/to/YgoMaster"
 ```
 
-This runs the same build and validation steps, then installs the generated files into YgoMaster. Stop the relevant YgoMaster process before installing and restart it afterward.
+This runs the same build and validation steps, then installs the generated Shop pack file and merges its odds into the existing `Data/ShopPackOdds.json`. The installer preserves original entries and comments, tracks its inserted odds block, and refuses to proceed if `Data/ShopPackOdds/` already exists (because of an upstream loader bug). Back up or relocate such a directory only after inspecting its contents. Stop the relevant YgoMaster process before installing and restart it afterward.
 
 ### Uninstall
 
@@ -151,7 +151,7 @@ This runs the same build and validation steps, then installs the generated files
 ygomaster-packbuilder uninstall --ygomaster-dir "/path/to/YgoMaster"
 ```
 
-This removes PackBuilder-managed files and restores the previous shop setting using the installation state saved on that machine. If managed files have been modified independently, the uninstaller may refuse to overwrite them.
+This removes PackBuilder-managed Shop entries and the marked block added to `Data/ShopPackOdds.json`, preserving unrelated odds entries and restoring the previous shop setting using the installation state saved on that machine. If managed files have been modified independently, the uninstaller may refuse to overwrite them.
 
 For a Windows path, for example:
 
@@ -210,6 +210,7 @@ The project `.gitignore` already excludes `.venv/` and generated build files. Th
 - Pack imports depend on YGOPRODeck's custom-pack endpoint, which can be slow to reflect recent changes. **PackBuilder does not cache API responses.**
 - Cards without a valid mapping in YgoMaster's `YdkIds.txt`, or packs that violate the configured rules, stop the build with an error.
 - PackBuilder generates shop data; it does not add new card artwork/assets or configure multiplayer connectivity.
+- Installation state is now version 2. If you installed with an older PackBuilder version, uninstall using that old version **before upgrading**; older installation state cannot be migrated automatically.
 - Test the generated content and opening behavior with the target YgoMaster version before using it in a live league.
 
 ## Technical documentation
