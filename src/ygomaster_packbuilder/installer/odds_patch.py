@@ -53,11 +53,38 @@ def _strip_comments(text: str) -> str:
         i += 1
     return "".join(chars)
 
+def _json_for_validation(text: str) -> str:
+    """Accept YgoMaster's trailing commas only in the validation copy."""
+    chars = list(_strip_comments(text))
+    quoted = False
+    escaped = False
+    for index, char in enumerate(chars):
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quoted = False
+        elif char == '"':
+            quoted = True
+        elif char == ",":
+            next_index = index + 1
+            while next_index < len(chars) and chars[next_index].isspace():
+                next_index += 1
+            previous_index = index - 1
+            while previous_index >= 0 and chars[previous_index].isspace():
+                previous_index -= 1
+            if (next_index < len(chars) and chars[next_index] in "}]"
+                    and previous_index >= 0 and chars[previous_index] not in "[{:,"):
+                chars[index] = " "
+    return "".join(chars)
+
 def _read_odds_document(content: bytes) -> tuple[str, str, list]:
     encoding = "utf-8-sig" if content.startswith(b"\xef\xbb\xbf") else "utf-8"
     try:
         text = content.decode(encoding)
-        data = json.loads(_strip_comments(text))
+        data = json.loads(_json_for_validation(text))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise YgoMasterOddsPatchError(f"Invalid main ShopPackOdds.json: {exc}") from exc
     if not isinstance(data, list):
