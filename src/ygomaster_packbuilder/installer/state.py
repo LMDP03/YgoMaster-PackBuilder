@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 
-INSTALL_STATE_VERSION = 1
+INSTALL_STATE_VERSION = 2
 INSTALL_STATE_DIRNAME = ".ygomaster-packbuilder"
 INSTALL_STATE_FILENAME = "install-state.json"
 BACKUP_DIRNAME = "backup"
@@ -19,6 +19,7 @@ class YgoMasterInstallationState:
     version: int
     per_pack_rarities_before: bool | None
     managed_files: dict[str, ManagedFileState]
+    odds_block_sha256: str
 
 def sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
@@ -38,19 +39,23 @@ def get_backup_path(ygomaster_dir: Path, relative_path: str) -> Path:
     _validate_relative_path(relative_path)
     return get_install_state_dir(ygomaster_dir) / BACKUP_DIRNAME / relative_path
 
+def _validate_sha256(value: str, field: str) -> None:
+    if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value.lower()):
+        raise ValueError(f"Invalid {field}.")
+
 def _validate_state(state: YgoMasterInstallationState) -> None:
     if state.version != INSTALL_STATE_VERSION:
-        raise ValueError(f"Unsupported installation state version: {state.version!r}.")
+        raise ValueError(f"Unsupported installation state version: {state.version!r}. Uninstall an older PackBuilder version before upgrading.")
     if state.per_pack_rarities_before is not None and not isinstance(state.per_pack_rarities_before, bool):
         raise ValueError("Invalid per_pack_rarities_before.")
+    _validate_sha256(state.odds_block_sha256, "odds_block_sha256")
     for key, managed in state.managed_files.items():
         if not isinstance(key, str) or not key:
             raise ValueError("Managed file keys must be non-empty strings.")
         _validate_relative_path(managed.relative_path)
         if not isinstance(managed.preexisting, bool):
             raise ValueError(f"Invalid preexisting flag for {key!r}.")
-        if len(managed.installed_sha256) != 64 or any(c not in "0123456789abcdef" for c in managed.installed_sha256.lower()):
-            raise ValueError(f"Invalid installed_sha256 for {key!r}.")
+        _validate_sha256(managed.installed_sha256, f"installed_sha256 for {key!r}")
 
 def save_install_state(state: YgoMasterInstallationState, ygomaster_dir: Path) -> None:
     _validate_state(state)
@@ -59,6 +64,7 @@ def save_install_state(state: YgoMasterInstallationState, ygomaster_dir: Path) -
     data = {
         "version": state.version,
         "per_pack_rarities_before": state.per_pack_rarities_before,
+        "odds_block_sha256": state.odds_block_sha256,
         "managed_files": {
             key: {
                 "relative_path": value.relative_path,
@@ -102,6 +108,7 @@ def load_install_state(ygomaster_dir: Path) -> YgoMasterInstallationState | None
         version=data.get("version", 0),
         per_pack_rarities_before=data.get("per_pack_rarities_before"),
         managed_files=managed,
+        odds_block_sha256=data.get("odds_block_sha256", ""),
     )
     _validate_state(state)
     return state
