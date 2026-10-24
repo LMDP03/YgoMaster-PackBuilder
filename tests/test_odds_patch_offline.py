@@ -19,9 +19,22 @@ ENTRIES = [{"packShopIds": [19000000], "gachaType": 1, "cardRateList": []}]
 BASES = [
     b"[]",
     b'[{"packShopIds":[1]}]',
+    # The upstream YgoMaster Data/ShopPackOdds.json includes trailing commas
+    # inside nested cardRateList arrays (allowed by MiniJSON, not strict JSON).
+    b'[\\n  // Legacy pack rates (estimate)\\n  {"packShopIds":[1], "cardRateList":[{"start_num":1, "rate":{"1":{"rate":"100.00"},},},],},\\n]',
+    b'[{"packShopIds":[1], "name":"literal ,] and ,} inside string", "cardRateList":[{"start_num":1,},],},]',
+
     b'[\n// Preserve comments\n{"packShopIds":[1]} // trailing comment\n]',
     b'\xef\xbb\xbf[\r\n // Existing entry\r\n{"packShopIds":[1]}\r\n]\r\n',
 ]
+
+for invalid in (b'[{,}]', b'[{"packShopIds":[1], "bad":,}]'):
+    try:
+        patch_main_odds_file(invalid, ENTRIES)
+    except YgoMasterOddsPatchError:
+        pass
+    else:
+        raise AssertionError(f"Invalid JSON unexpectedly accepted: {invalid!r}")
 
 for base in BASES:
     patched, digest = patch_main_odds_file(base, ENTRIES)
