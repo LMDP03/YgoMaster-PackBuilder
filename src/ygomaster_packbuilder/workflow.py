@@ -7,7 +7,7 @@ from ygomaster_packbuilder.domain import ProjectDefinition
 from ygomaster_packbuilder.exporters.ygomaster import YgoMasterBuildArtifacts, write_ygomaster_build
 from ygomaster_packbuilder.installer import YgoMasterInstallResult, install_ygomaster_build
 from ygomaster_packbuilder.manifest import load_project_manifest
-from ygomaster_packbuilder.mapping import load_rarity_mapping, load_ydk_mapping
+from ygomaster_packbuilder.mapping import load_master_duel_card_catalog, load_rarity_mapping, load_ydk_mapping
 from ygomaster_packbuilder.policies import load_policies_config
 from ygomaster_packbuilder.registry import ensure_project_pack_ids, load_id_registry, save_id_registry
 from ygomaster_packbuilder.sources.ygoprodeck import YgoProDeckClient
@@ -16,6 +16,7 @@ from ygomaster_packbuilder.validation import (
     validate_policies_config,
     validate_project_configuration,
     validate_project_definition,
+    validate_project_card_catalog,
     validate_project_manifest,
     validate_ygomaster_build,
 )
@@ -28,6 +29,7 @@ class WorkflowPaths:
     policies: Path
     rarity_mapping: Path
     ydk_mapping: Path
+    card_catalog: Path
     id_registry: Path
     build_dir: Path
 
@@ -56,6 +58,9 @@ def resolve_workflow_paths(project_root: str | Path, ygomaster_dir: str | Path) 
     ydk_mapping = ygomaster_dir / "Data" / "YdkIds.txt"
     if not ydk_mapping.is_file():
         raise WorkflowError(f"YgoMaster YdkIds.txt was not found: {ydk_mapping}")
+    card_catalog = ygomaster_dir / "Data" / "CardList.json"
+    if not card_catalog.is_file():
+        raise WorkflowError(f"YgoMaster CardList.json was not found: {card_catalog}")
     return WorkflowPaths(
         project_root=project_root,
         ygomaster_dir=ygomaster_dir,
@@ -63,6 +68,7 @@ def resolve_workflow_paths(project_root: str | Path, ygomaster_dir: str | Path) 
         policies=project_root / "config" / "policies.yaml",
         rarity_mapping=project_root / "config" / "rarity_mapping.yaml",
         ydk_mapping=ydk_mapping,
+        card_catalog=card_catalog,
         id_registry=project_root / "state" / "ygomaster_ids.json",
         build_dir=project_root / "build",
     )
@@ -90,6 +96,7 @@ def build_project(
 
     rarity_mapping = load_rarity_mapping(paths.rarity_mapping)
     ydk_mapping = load_ydk_mapping(paths.ydk_mapping)
+    card_ids = load_master_duel_card_catalog(paths.card_catalog)
 
     project = assemble_project_definition(
         manifest=manifest,
@@ -99,6 +106,7 @@ def build_project(
         ygoprodeck_client=ygoprodeck_client,
     )
     _require_valid(validate_project_definition(project), "Domain")
+    _require_valid(validate_project_card_catalog(project, card_ids), "Card catalog")
 
     registry = load_id_registry(paths.id_registry)
     pack_ids = ensure_project_pack_ids(project, registry)

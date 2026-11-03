@@ -9,7 +9,7 @@ build_project(project_root, ygomaster_dir, *, ygoprodeck_client=None) -> BuildWo
 build_and_install_project(project_root, ygomaster_dir, *, ygoprodeck_client=None) -> InstallWorkflowResult
 ```
 
-`build_project()` **requires a YgoMaster root even when not installing**, because it reads `<YgoMaster>/Data/YdkIds.txt`. `ygoprodeck_client` is optional and allows deterministic fake-client tests. If not supplied, `assemble_project_definition()` creates a real `YgoProDeckClient`.
+`build_project()` **requires a YgoMaster root even when not installing**, because it reads `<YgoMaster>/Data/YdkIds.txt` and `<YgoMaster>/Data/CardList.json`. `ygoprodeck_client` is optional and allows deterministic fake-client tests. If not supplied, `assemble_project_definition()` creates a real `YgoProDeckClient`.
 
 `BuildWorkflowResult` holds `project: ProjectDefinition`, `pack_ids: dict[str,int]`, `artifacts: YgoMasterBuildArtifacts`, and `paths: WorkflowPaths`. `InstallWorkflowResult` holds the build result and `YgoMasterInstallResult`.
 
@@ -17,7 +17,7 @@ build_and_install_project(project_root, ygomaster_dir, *, ygoprodeck_client=None
 
 ## 2. Paths
 
-`resolve_workflow_paths()` resolves absolute paths and checks both roots exist, and that `Data/YdkIds.txt` exists. It derives:
+`resolve_workflow_paths()` resolves absolute paths and checks both roots exist, and that `Data/YdkIds.txt` and `Data/CardList.json` exist. It derives:
 
 | Field | File/directory relative to root |
 | --- | --- |
@@ -25,6 +25,7 @@ build_and_install_project(project_root, ygomaster_dir, *, ygoprodeck_client=None
 | `policies` | `<project_root>/config/policies.yaml` |
 | `rarity_mapping` | `<project_root>/config/rarity_mapping.yaml` |
 | `ydk_mapping` | `<ygomaster_dir>/Data/YdkIds.txt` |
+| `card_catalog` | `<ygomaster_dir>/Data/CardList.json` |
 | `id_registry` | `<project_root>/state/ygomaster_ids.json` |
 | `build_dir` | `<project_root>/build` |
 
@@ -34,9 +35,9 @@ The install destination is inferred by `installer/ygomaster.py` from `<ygomaster
 
 1. Resolve all paths; read manifest and policy YAML.
 2. Validate manifest, policies and cross-policy references; stop on error before fetching external packs.
-3. Read rarity and YDK mapping files.
+3. Read rarity, YDK mapping and YgoMaster card catalog files.
 4. Assemble project by fetching/parsing YGOPRODeck packs and mapping card rarities/IDs.
-5. Domain-validate full project; stop on errors before registry allocation/build.
+5. Domain-validate full project, then verify resolved Master Duel IDs against `CardList.json`; stop on errors before registry allocation/build.
 6. Load persistent registry; allocate stable IDs for any new pack keys **in memory**.
 7. Write and validate artifacts in `TemporaryDirectory(prefix=".ygomaster-packbuilder-", dir=project_root)`.
 8. Write and validate final `build/` artifacts.

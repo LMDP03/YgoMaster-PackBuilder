@@ -7,7 +7,7 @@ It also provides commands to install, update, and uninstall the generated conten
 ## Features
 
 - Import custom packs defined on YGOPRODeck.
-- Resolve card identifiers using the `YdkIds.txt` supplied with an existing YgoMaster installation.
+- Resolve YDK identifiers using the installed `YdkIds.txt` and verify that the resolved cards exist in its local `CardList.json` catalog.
 - Validate pack sizes, rarity distributions, and relationships between main and mini-packs.
 - Generate YgoMaster shop entries and opening probabilities.
 - Preserve stable pack IDs between builds.
@@ -21,7 +21,7 @@ Before starting, you need:
 
 - **Python 3.11 or newer** (Python 3.12 is a suitable choice).
 - **Git** to clone the repository.
-- An **existing YgoMaster installation** containing `Data/Shop.json`, `Data/ShopPackOdds.json`, and `Data/YdkIds.txt`.
+- An **existing YgoMaster installation** containing `Data/Shop.json`, `Data/ShopPackOdds.json`, `Data/YdkIds.txt`, and `Data/CardList.json`.
 - An internet connection when importing packs from YGOPRODeck.
 
 PackBuilder's Python dependencies are declared in the repository's root `pyproject.toml` and installed automatically with `pip`: `PyYAML` and `requests`.
@@ -109,7 +109,7 @@ python -m venv .venv
 
 The `ygomaster-packbuilder` executable requires the `[project.scripts]` entry in the **root** `pyproject.toml`. If you are using a revision without that entry, invoke the CLI with your environment’s Python and `-m ygomaster_packbuilder.cli` instead.
 
-Run these commands from the **PackBuilder repository root**. The `--ygomaster-dir` argument is the path to the **YgoMaster root folder** (the one containing `Data/`), not to `Data/`, `Shop/`, or an executable. You do not need to specify `YdkIds.txt` separately; the tool locates it under `Data/`.
+Run these commands from the **PackBuilder repository root**. The `--ygomaster-dir` argument is the path to the **YgoMaster root folder** (the one containing `Data/`), not to `Data/`, `Shop/`, or an executable. You do not need to specify `YdkIds.txt` or `CardList.json` separately; the tool locates both under `Data/`.
 
 ### Activate the virtual environment
 
@@ -208,7 +208,8 @@ The project `.gitignore` already excludes `.venv/` and generated build files. Th
 ## Notes and limitations
 
 - Pack imports depend on YGOPRODeck's custom-pack endpoint, which can be slow to reflect recent changes. **PackBuilder does not cache API responses.**
-- Cards without a valid mapping in YgoMaster's `YdkIds.txt`, or packs that violate the configured rules, stop the build with an error.
+- Cards without a valid mapping in `Data/YdkIds.txt`, or whose resolved Master Duel ID is absent from the installed `Data/CardList.json`, stop the build with an error (including the card name, YDK ID, internal ID and pack). This applies to both `build` and `install` and does not change the source pack automatically.
+- A local `CardList.json` may lag behind the official game catalog; this check confirms availability in the chosen YgoMaster installation, not necessarily global release status, art assets or duel-engine compatibility.
 - PackBuilder generates shop data; it does not add new card artwork/assets or configure multiplayer connectivity.
 - Installation state is now version 2. If you installed with an older PackBuilder version, uninstall using that old version **before upgrading**; older installation state cannot be migrated automatically.
 - Test the generated content and opening behavior with the target YgoMaster version before using it in a live league.

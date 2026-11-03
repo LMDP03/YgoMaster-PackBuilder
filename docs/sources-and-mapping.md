@@ -73,7 +73,26 @@ The domain validator later emits `unresolved-master-duel-id` if `Card.master_due
 
 **Example diagnostic:** a YGOPRODeck card may have a valid `ydk_id` but be absent from a given version of YgoMaster's `YdkIds.txt`. That indicates an unresolved mapping for that installation, not necessarily a typo in YGOPRODeck. Confirm the actual game/card mapping or remove/substitute the unsupported card. Do **not** invent an internal ID or modify the registry to mask the issue; the registry maps **pack keys**, not card IDs.
 
-## 6. Assembly call path
+## 6. Installed YgoMaster card catalog
+
+The workflow also requires `<YgoMaster>/Data/CardList.json`. Unlike `YdkIds.txt`,
+which maps YDK IDs to internal IDs, this file defines the card IDs recognized
+by the installed YgoMaster server. `mapping/catalog.py` parses its object
+(`{"23026": 2, ...}`), validates the ID keys and official rarity codes
+1–4, then returns the **set of IDs only**. League pack rarities are separate
+and need not match these codes.
+
+After domain validation, `validate_project_card_catalog()` reports
+`card-not-in-ygomaster-catalog` for any resolved ID missing from that set.
+For example, a YDK mapping `10529441 23026` will no longer pass if ID
+`23026` is absent from the local catalog. This check runs before the
+registry/build/installation steps.
+
+This verifies the **local server catalog**, not that a card has all client
+art assets, is legal in the current banlist or is present in the newest
+official Master Duel release. The installed catalog can be outdated.
+
+## 7. Assembly call path
 
 `assembly/project.py` coordinates one HTTP fetch per manifest pack:
 
@@ -91,6 +110,6 @@ ManifestPack / ManifestSharedPack
 
 `assemble_pack_definition()` checks that the fetched `YgoProDeckPackData.external_id` matches the manifest source ID. It uses `get_pack_rule(pack_type)` for expected count and booster size. It **does not** itself reject an invalid total count or overlapping mini cards; `validation/domain.py` enforces that after all packs have been assembled.
 
-## 7. Offline testing strategy
+## 8. Offline testing strategy
 
-The `tests/` notebooks use injected fake clients/session objects rather than calling the live endpoint. The end-to-end workflow notebook generates synthetic packs and a synthetic `YdkIds.txt` under `TemporaryDirectory` to test all layers deterministically. Live notebook runs exercise real source updates and can fail on external delays, card pool changes, or missing YDK mappings.
+The `tests/` notebooks use injected fake clients/session objects rather than calling the live endpoint. The end-to-end workflow notebook generates synthetic packs, a synthetic `YdkIds.txt` and a synthetic `CardList.json` under `TemporaryDirectory` to test all layers deterministically. Live notebook runs exercise real source updates and can fail on external delays, card pool changes, or missing YDK mappings.

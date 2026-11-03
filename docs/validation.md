@@ -13,7 +13,8 @@ Structural parser failures (malformed YAML, malformed source response, bad YDK f
 | Manifest | `validate_project_manifest()` | players, source/provider, pack keys/types | any source fetch |
 | Policies | `validate_policies_config()` | unique policies, rates/totals, pity | any source fetch |
 | Cross-config | `validate_project_configuration()` | default/override policy references | any source fetch |
-| Domain | `validate_project_definition()` | full card lists, sizes, rarities, mini relationships and mapping resolution | registry allocation/build |
+| Domain | `validate_project_definition()` | full card lists, sizes, rarities, mini relationships and YDK mapping resolution | catalog validation |
+| Card catalog | `validate_project_card_catalog()` | resolved MD IDs occur in the installed `Data/CardList.json` | registry allocation/build |
 | Build | `validate_ygomaster_build()` | generated JSON structure and exact expected content | installation |
 
 `build_project()` validates the staged and final builds separately. `install_ygomaster_build()` validates its input build again before touching the target YgoMaster directory.
@@ -85,6 +86,24 @@ The validator deliberately uses `Card.ydk_id`, not name or `master_duel_id`, for
 ### Diagnosing source errors
 
 A domain error with `packs.<key>.cards[...]` refers to a card already returned by YGOPRODeck. If you have edited rarities on the website but errors remain unchanged, inspect the current endpoint response: PackBuilder has no cache and a delayed source response can still contain the previous values. A missing Master Duel mapping is a separate problem: it can persist even after all rarity differences are corrected.
+
+### YgoMaster catalog validation
+
+After successful domain validation, `validate_project_card_catalog(project, card_ids)`
+checks each resolved `Card.master_duel_id` against keys from the installed
+`<YgoMaster>/Data/CardList.json`. The loader requires a nonempty JSON object with
+numeric ID keys and rarity values 1–4; those rarity values are **not** compared to
+the league's configured per-pack rarities.
+
+| Code | Condition |
+| --- | --- |
+| `card-not-in-ygomaster-catalog` | Resolved MD ID is absent from the local card catalog |
+
+The issue identifies the source card name, YDK ID, Master Duel ID, pack key
+and card path. Missing catalog files and invalid catalog JSON fail before
+fetching pack data; missing individual cards fail before writing build artifacts
+or updating the stable ID registry. An out-of-date local catalog may also
+produce errors, so verify the installed YgoMaster version.
 
 ## 6. Build validation codes
 
